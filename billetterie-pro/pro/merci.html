@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ton billet – Mirevy Party</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<style>
+body{margin:0;background:#000;color:#f2f2f2;font:16px/1.5 system-ui,sans-serif}
+main{max-width:520px;margin:0 auto;padding:40px 20px}
+h1{font-family:Impact,'Arial Narrow',sans-serif;font-weight:400;font-size:44px;text-transform:uppercase;color:#d90f0f;margin:0 0 12px}
+.card{border:2px solid #d90f0f;padding:18px;margin:20px 0}
+.card p{margin:4px 0}.err{color:#ff6b6b}
+button{width:100%;font:inherit;font-size:20px;font-weight:700;background:#d90f0f;color:#fff;border:0;padding:16px;cursor:pointer}
+small{color:#9a9a9a}
+</style></head>
+<body><main id="box"><h1>Un instant…</h1><p>Vérification de ton paiement.</p></main>
+<script>
+var box = document.getElementById('box');
+var id = new URLSearchParams(location.search).get('session_id');
+function esc(s){ return String(s).replace(/[&<>"]/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]; }); }
+function fail(m){ box.innerHTML = '<h1>Oups</h1><p class="err">' + esc(m) + '</p>'; }
+
+function makePdf(t){
+  var qr = qrcode(0, 'M'); qr.addData(t.code); qr.make();
+  var n = qr.getModuleCount(), doc = new window.jspdf.jsPDF({unit:'mm', format:'a5'});
+  doc.setFillColor(0,0,0); doc.rect(0,0,148,210,'F');
+  doc.setFillColor(217,15,15); doc.rect(0,0,148,36,'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(30); doc.text('MIREVY PARTY', 12, 24);
+  doc.setFontSize(16); doc.text('Sam. 07 novembre  |  23h - 05h', 12, 52);
+  doc.setFont('helvetica','normal'); doc.setFontSize(12);
+  doc.text('1 avenue Léon Eyrolles, 94230 Cachan', 12, 60);
+  doc.setFont('helvetica','bold'); doc.setFontSize(14);
+  doc.text(t.name || t.email, 12, 76); doc.text('Billet ' + t.ticket + ' - ' + t.amount + ' EUR', 12, 84);
+  doc.setFillColor(255,255,255); doc.rect(24,94,100,100,'F');
+  var m = 84 / n;
+  doc.setFillColor(0,0,0);
+  for (var r = 0; r < n; r++) for (var c = 0; c < n; c++) if (qr.isDark(r, c)) doc.rect(32 + c*m, 102 + r*m, m + 0.05, m + 0.05, 'F');
+  doc.setTextColor(154,154,154); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text('1 personne - billet à usage unique - présente ce QR code à l\'entrée', 12, 203);
+  doc.save('billet-mirevy-party.pdf');
+}
+
+if (!id) fail('Lien incomplet. Utilise le lien reçu après ton paiement.');
+else fetch('/.netlify/functions/api?action=ticket&session_id=' + encodeURIComponent(id))
+  .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
+  .then(function(x){
+    if (!x.ok) return fail(x.d.error || 'Erreur.');
+    var t = x.d;
+    box.innerHTML = '<h1>Paiement reçu</h1><div class="card"><p><b>' + esc(t.name || t.email) + '</b></p><p>Billet ' + esc(t.ticket) + ' – ' + esc(t.amount) + ' €</p><p>Sam. 07 novembre, 23h – 05h</p></div>' +
+      '<button id="dl">Télécharger mon billet (PDF)</button><p><small>Garde cette page : tu peux la rouvrir avec le lien de ton reçu pour retélécharger le billet.</small></p>';
+    document.getElementById('dl').onclick = function(){ makePdf(t); };
+  }).catch(function(){ fail('Connexion impossible. Réessaie.'); });
+</script></body></html>

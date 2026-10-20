@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scan – Mirevy Party</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<style>
+body{margin:0;background:#000;color:#f2f2f2;font:16px/1.5 system-ui,sans-serif}
+main{max-width:520px;margin:0 auto;padding:24px 20px}
+input,button{width:100%;font:inherit;padding:14px;border:0;margin-top:10px}
+input{background:#111;color:#fff;border:2px solid #333}
+button{background:#d90f0f;color:#fff;font-weight:700;cursor:pointer}
+#res{margin-top:14px;padding:22px;font-size:22px;font-weight:700;text-align:center;display:none}
+.ok{background:#0a7a2f}.used{background:#b36b00}.bad{background:#b00020}
+</style></head>
+<body><main>
+<div id="login"><h2>Contrôle des billets</h2><input id="pw" type="password" placeholder="Mot de passe"><button id="go">Démarrer</button></div>
+<div id="app" style="display:none"><div id="reader"></div><div id="res"></div><button id="next" style="display:none">Scanner le suivant</button></div>
+<script>
+var pw = '', scanner, busy = false, res = document.getElementById('res'), next = document.getElementById('next');
+function show(cls, html){ res.className = cls; res.innerHTML = html; res.style.display = 'block'; next.style.display = 'block'; }
+function esc(s){ return String(s).replace(/[&<>"]/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]; }); }
+function onScan(code){
+  if (busy) return; busy = true; scanner.pause(true);
+  fetch('/.netlify/functions/api?action=scan', {method:'POST', headers:{'x-password': pw}, body: JSON.stringify({code: code})})
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d.status === 'ok') show('ok', 'VALIDE<br>' + esc(d.name) + '<br>' + esc(d.ticket));
+      else if (d.status === 'used') show('used', 'DÉJÀ UTILISÉ<br>' + esc(d.name) + '<br>à ' + new Date(d.usedAt).toLocaleTimeString('fr-FR'));
+      else if (d.status === 'invalid') show('bad', 'BILLET INVALIDE');
+      else show('bad', esc(d.error || 'Erreur'));
+    }).catch(function(){ show('bad', 'Pas de connexion'); });
+}
+next.onclick = function(){ res.style.display = 'none'; next.style.display = 'none'; busy = false; scanner.resume(); };
+document.getElementById('go').onclick = function(){
+  pw = document.getElementById('pw').value;
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  scanner = new Html5Qrcode('reader');
+  scanner.start({facingMode:'environment'}, {fps:10, qrbox:250}, onScan).catch(function(){ show('bad', 'Caméra refusée'); });
+};
+</script></main></body></html>
