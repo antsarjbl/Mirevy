@@ -76,10 +76,9 @@ input:focus-visible{outline:3px solid #fff;outline-offset:1px;border-color:var(-
 <script>
 // ——— À MODIFIER : colle ici tes liens de paiement Stripe ———
 var TICKETS = [
-  {name:'Premier servi', desc:'Quota atteint', price:null, soldOut:true, link:''},
+  {name:'Gratuit', desc:'Places limitées – inscription obligatoire', price:0, soldOut:false, link:'', free:true},
   {name:'Prévente', desc:'Tarif réduit', price:7, soldOut:false, link:'https://book.stripe.com/14AcMY1eX8KT4Ix3vm4F200'},
-  {name:'Normale', desc:'Tarif plein', price:10, soldOut:false, link:'https://book.stripe.com/14A00c7Dlf9h1wlfe44F201'},
-  {name:'Gratuit', desc:'Places limitées – inscription obligatoire', price:0, soldOut:false, link:'', free:true}
+  {name:'Normale', desc:'Tarif plein', price:10, soldOut:false, link:'https://book.stripe.com/14A00c7Dlf9h1wlfe44F201'}
 ];
 var selected = null;
 var list = document.getElementById('tickets');
