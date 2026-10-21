@@ -76,7 +76,7 @@ input:focus-visible{outline:3px solid #fff;outline-offset:1px;border-color:var(-
 <script>
 // ——— À MODIFIER : colle ici tes liens de paiement Stripe ———
 var TICKETS = [
-  {name:'Gratuit', desc:'Places limitées – inscription obligatoire', price:0, soldOut:false, link:'', free:true},
+  {name:'Gratuit', desc:'Toutes les places ont été données', price:0, soldOut:true, soldLabel:'Terminé', link:'', free:true},
   {name:'Prévente', desc:'Tarif réduit', price:7, soldOut:false, link:'https://book.stripe.com/14AcMY1eX8KT4Ix3vm4F200'},
   {name:'Normale', desc:'Tarif plein', price:10, soldOut:false, link:'https://book.stripe.com/14A00c7Dlf9h1wlfe44F201'}
 ];
@@ -91,7 +91,7 @@ TICKETS.forEach(function(t){
   b.setAttribute('aria-checked','false');
   if (t.soldOut) b.disabled = true;
   b.innerHTML = '<span><b>' + t.name + '</b><small>' + t.desc + '</small></span>' +
-    '<span class="price">' + (t.soldOut ? 'Complet' : (t.price === 0 ? 'Gratuit' : t.price + ' €')) + '</span>';
+    '<span class="price">' + (t.soldOut ? (t.soldLabel || 'Complet') : (t.price === 0 ? 'Gratuit' : t.price + ' €')) + '</span>';
   b.addEventListener('click', function(){
     selected = t; err.textContent = '';
     document.getElementById('freeForm').classList.toggle('hidden', !t.free);
