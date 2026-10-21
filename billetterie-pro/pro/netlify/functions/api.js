@@ -11,7 +11,8 @@ async function stripe(path, body) {
   });
   return { ok: r.ok, d: await r.json() };
 }
-const ticketName = s => (s.amount_total === 700 ? 'Prévente' : 'Normale');
+const ticketName = s => (s.amount_total === 0 ? 'Gratuit' : s.amount_total === 700 ? 'Prévente' : 'Normale');
+const isPaid = s => s.payment_status === 'paid' || s.payment_status === 'no_payment_required';
 
 exports.handler = async (event) => {
   if (!KEY || !SECRET) return json(500, { error: 'Serveur mal configuré.' });
@@ -23,7 +24,7 @@ exports.handler = async (event) => {
     if (!/^cs_(test|live)_[A-Za-z0-9]+$/.test(id)) return json(400, { error: 'Lien invalide.' });
     const s = await stripe('checkout/sessions/' + id);
     if (!s.ok) return json(404, { error: 'Paiement introuvable.' });
-    if (s.d.payment_status !== 'paid') return json(402, { error: 'Paiement non confirmé. Réessaie dans une minute.' });
+    if (!isPaid(s.d)) return json(402, { error: 'Paiement non confirmé. Réessaie dans une minute.' });
     const c = s.d.customer_details || {};
     return json(200, { code: id + '.' + sign(id), name: c.name || '', email: c.email || '', ticket: ticketName(s.d), amount: s.d.amount_total / 100 });
   }
@@ -37,7 +38,7 @@ exports.handler = async (event) => {
     const id = code.slice(0, i), sig = code.slice(i + 1);
     if (i < 0 || !/^cs_(test|live)_[A-Za-z0-9]+$/.test(id) || !same(sig, sign(id))) return json(200, { status: 'invalid' });
     const s = await stripe('checkout/sessions/' + id);
-    if (!s.ok || s.d.payment_status !== 'paid') return json(200, { status: 'invalid' });
+    if (!s.ok || !isPaid(s.d)) return json(200, { status: 'invalid' });
     const c = s.d.customer_details || {};
     const info = { name: c.name || '', ticket: ticketName(s.d) };
     if (s.d.metadata && s.d.metadata.used) return json(200, Object.assign({ status: 'used', usedAt: s.d.metadata.used }, info));
