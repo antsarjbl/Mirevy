@@ -64,6 +64,7 @@ input:focus-visible{outline:3px solid #fff;outline-offset:1px;border-color:var(-
     <h2>Ton billet</h2>
     <div class="tickets" role="radiogroup" aria-label="Choisir un billet" id="tickets"></div>
 
+    <div id="freeForm" class="hidden"><div class="row"><div><label for="prenom">Prénom</label><input id="prenom" autocomplete="given-name"></div><div><label for="nom">Nom</label><input id="nom" autocomplete="family-name"></div></div><label for="email">E-mail</label><input id="email" type="email" autocomplete="email" inputmode="email"></div>
     <p class="err" id="err" role="alert"></p>
     <button class="cta" id="buy" type="button">Payer mon billet</button>
     <p class="note">Paiement sécurisé par Stripe. Ton nom et ton e-mail te sont demandés sur la page de paiement. Tu reçois ton reçu par e-mail : garde-le pour l’entrée.</p>
@@ -77,7 +78,8 @@ input:focus-visible{outline:3px solid #fff;outline-offset:1px;border-color:var(-
 var TICKETS = [
   {name:'Premier servi', desc:'Quota atteint', price:null, soldOut:true, link:''},
   {name:'Prévente', desc:'Tarif réduit', price:7, soldOut:false, link:'https://book.stripe.com/14AcMY1eX8KT4Ix3vm4F200'},
-  {name:'Normale', desc:'Tarif plein', price:10, soldOut:false, link:'https://book.stripe.com/14A00c7Dlf9h1wlfe44F201'}
+  {name:'Normale', desc:'Tarif plein', price:10, soldOut:false, link:'https://book.stripe.com/14A00c7Dlf9h1wlfe44F201'},
+  {name:'Gratuit', desc:'Places limitées – inscription obligatoire', price:0, soldOut:false, link:'', free:true}
 ];
 var selected = null;
 var list = document.getElementById('tickets');
@@ -93,14 +95,27 @@ TICKETS.forEach(function(t){
     '<span class="price">' + (t.soldOut ? 'Complet' : (t.price === 0 ? 'Gratuit' : t.price + ' €')) + '</span>';
   b.addEventListener('click', function(){
     selected = t; err.textContent = '';
+    document.getElementById('freeForm').classList.toggle('hidden', !t.free);
     list.querySelectorAll('.t').forEach(function(x){ x.setAttribute('aria-checked', x === b ? 'true' : 'false'); });
     buy.textContent = t.price === 0 ? 'Réserver gratuitement' : 'Payer ' + t.price + ' €';
   });
   list.appendChild(b);
 });
 
+function reserveFree(){
+  var p = document.getElementById('prenom').value.trim(), n = document.getElementById('nom').value.trim(), e = document.getElementById('email').value.trim();
+  if (!p || !n) { err.textContent = 'Indique ton prénom et ton nom.'; return; }
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) { err.textContent = 'Entre une adresse e-mail valide.'; return; }
+  err.textContent = ''; buy.disabled = true; buy.textContent = 'Un instant…';
+  function back(m){ err.textContent = m; buy.disabled = false; buy.textContent = 'Réserver gratuitement'; }
+  fetch('/.netlify/functions/api?action=free', {method:'POST', body: JSON.stringify({prenom:p, nom:n, email:e})})
+    .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
+    .then(function(x){ if (!x.ok) return back(x.d.error || 'Erreur.'); location.href = '/merci.html?free=' + encodeURIComponent(x.d.code); })
+    .catch(function(){ back('Connexion impossible. Réessaie.'); });
+}
 buy.addEventListener('click', function(){
   if (!selected) { err.textContent = 'Choisis un billet.'; return; }
+  if (selected.free) return reserveFree();
   if (!/^https:\/\//.test(selected.link)) { err.textContent = 'Ce billet n’est pas encore disponible.'; return; }
   window.location.href = selected.link;
 });

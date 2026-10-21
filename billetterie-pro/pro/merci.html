@@ -16,7 +16,7 @@ small{color:#9a9a9a}
 <body><main id="box"><h1>Un instant…</h1><p>Vérification de ton paiement.</p></main>
 <script>
 var box = document.getElementById('box');
-var id = new URLSearchParams(location.search).get('session_id');
+var params = new URLSearchParams(location.search), id = params.get('session_id'), free = params.get('free');
 function esc(s){ return String(s).replace(/[&<>"]/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]; }); }
 function fail(m){ box.innerHTML = '<h1>Oups</h1><p class="err">' + esc(m) + '</p>'; }
 
@@ -30,7 +30,7 @@ function makePdf(t){
   doc.setFont('helvetica','normal'); doc.setFontSize(12);
   doc.text('1 avenue Léon Eyrolles, 94230 Cachan', 12, 60);
   doc.setFont('helvetica','bold'); doc.setFontSize(14);
-  doc.text(t.name || t.email, 12, 76); doc.text('Billet ' + t.ticket + ' - ' + t.amount + ' EUR', 12, 84);
+  doc.text(t.name || t.email, 12, 76); doc.text('Billet ' + t.ticket + (t.amount ? ' - ' + t.amount + ' EUR' : ''), 12, 84);
   doc.setFillColor(255,255,255); doc.rect(24,94,100,100,'F');
   var m = 84 / n;
   doc.setFillColor(0,0,0);
@@ -40,13 +40,13 @@ function makePdf(t){
   doc.save('billet-mirevy-party.pdf');
 }
 
-if (!id) fail('Lien incomplet. Utilise le lien reçu après ton paiement.');
-else fetch('/.netlify/functions/api?action=ticket&session_id=' + encodeURIComponent(id))
+if (!id && !free) fail('Lien incomplet. Utilise le lien reçu après ton paiement.');
+else fetch('/.netlify/functions/api?action=ticket&' + (free ? 'code=' + encodeURIComponent(free) : 'session_id=' + encodeURIComponent(id)))
   .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
   .then(function(x){
     if (!x.ok) return fail(x.d.error || 'Erreur.');
     var t = x.d;
-    box.innerHTML = '<h1>Paiement reçu</h1><div class="card"><p><b>' + esc(t.name || t.email) + '</b></p><p>Billet ' + esc(t.ticket) + ' – ' + esc(t.amount) + ' €</p><p>Sam. 07 novembre, 23h – 05h</p></div>' +
+    box.innerHTML = '<h1>' + (t.amount ? 'Paiement reçu' : 'C’est réservé') + '</h1><div class="card"><p><b>' + esc(t.name || t.email) + '</b></p><p>Billet ' + esc(t.ticket) + (t.amount ? ' – ' + esc(t.amount) + ' €' : '') + '</p><p>Sam. 07 novembre, 23h – 05h</p></div>' +
       '<button id="dl">Télécharger mon billet (PDF)</button><p><small>Garde cette page : tu peux la rouvrir avec le lien de ton reçu pour retélécharger le billet.</small></p>';
     document.getElementById('dl').onclick = function(){ makePdf(t); };
   }).catch(function(){ fail('Connexion impossible. Réessaie.'); });
